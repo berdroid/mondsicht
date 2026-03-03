@@ -21,25 +21,24 @@ class LocationCubit extends Cubit<LocationState> {
       permission = await _repo.requestPermission();
     }
 
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
       emit(LocationPermissionDenied());
       return;
     }
 
     await _fetchPosition();
-    _timer = Timer.periodic(
-      const Duration(minutes: 1),
-      (_) => _fetchPosition(),
-    );
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) => _fetchPosition());
   }
 
   Future<void> _fetchPosition() async {
     try {
       final position = await _repo.getCurrentPosition();
+      // ignore: avoid_print
+      print(position);
       emit(LocationAvailable(LocationData(
         latitude: position.latitude,
         longitude: position.longitude,
+        accuracy: position.accuracy,
       )));
     } catch (_) {
       // Keep existing state if fetch fails.

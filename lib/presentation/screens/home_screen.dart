@@ -8,6 +8,7 @@ import 'package:mondsicht/domain/entities/moon_data.dart';
 import 'package:mondsicht/presentation/display/moon_display.dart';
 import 'package:mondsicht/presentation/info/moon_info_panel.dart';
 import 'package:mondsicht/presentation/widgets/permission_message.dart';
+import 'package:mondsicht/presentation/widgets/status_footer.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -15,24 +16,38 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocBuilder<LocationCubit, LocationState>(
-        builder: (context, locationState) {
-          if (locationState is LocationPermissionDenied) {
-            return const PermissionMessage();
-          }
+      body: Column(
+        children: [
+          Expanded(
+            child: BlocBuilder<LocationCubit, LocationState>(
+              builder: (context, locationState) {
+                if (locationState is LocationPermissionDenied) {
+                  return const PermissionMessage();
+                }
 
-          return BlocBuilder<MoonCubit, MoonState>(
-            builder: (context, moonState) {
-              if (moonState is MoonDataAvailable) {
-                return _MoonView(data: moonState.data);
-              }
-              // Loading / initial
-              return const Center(
-                child: CircularProgressIndicator(strokeWidth: 1),
-              );
+                return BlocBuilder<MoonCubit, MoonState>(
+                  builder: (context, moonState) {
+                    if (moonState is MoonDataAvailable) {
+                      return _MoonView(data: moonState.data);
+                    }
+                    return const Center(
+                      child: CircularProgressIndicator(strokeWidth: 1),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          // Pinned footer — always visible at the very bottom.
+          BlocBuilder<LocationCubit, LocationState>(
+            builder: (context, locationState) {
+              final location = locationState is LocationAvailable
+                  ? locationState.location
+                  : null;
+              return StatusFooter(location: location);
             },
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -75,7 +90,7 @@ class _PortraitLayout extends StatelessWidget {
         children: [
           SizedBox(
             width: screenWidth,
-            height: screenWidth, // square
+            height: screenWidth,
             child: display,
           ),
           info,

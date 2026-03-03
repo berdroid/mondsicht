@@ -15,6 +15,7 @@ dependencies:
   geolocator: ^14.0.0
   apsl_sun_calc: ^0.0.4
   intl: ^0.20.2
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

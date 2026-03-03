@@ -7,11 +7,23 @@ class MoonInfoPanel extends StatelessWidget {
 
   const MoonInfoPanel({super.key, required this.data});
 
+  /// Formats [time] as HH:mm, appending " +1" when it falls on a later
+  /// calendar day than [today].
+  String _formatTime(DateTime? time, DateFormat fmt, DateTime today) {
+    if (time == null) return '—';
+    final s = fmt.format(time);
+    final sameDay = time.year == today.year &&
+        time.month == today.month &&
+        time.day == today.day;
+    return sameDay ? s : '$s +1';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final timeFormat = DateFormat.Hm();
     final dateFormat = DateFormat.yMMMd();
+    final today = DateTime.now();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -50,16 +62,12 @@ class MoonInfoPanel extends StatelessWidget {
           // Rise / Set
           _InfoRow(
             label: 'Moonrise',
-            value: data.moonRise != null
-                ? timeFormat.format(data.moonRise!)
-                : '—',
+            value: _formatTime(data.moonRise, timeFormat, today),
           ),
           const Divider(),
           _InfoRow(
             label: 'Moonset',
-            value: data.moonSet != null
-                ? timeFormat.format(data.moonSet!)
-                : '—',
+            value: _formatTime(data.moonSet, timeFormat, today),
           ),
           const Divider(),
 
