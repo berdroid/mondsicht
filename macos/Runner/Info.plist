@@ -28,5 +28,7 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSLocationUsageDescription</key>
+	<string>MondSicht uses your location to calculate the moon's position and phase for your sky.</string>
 </dict>
 </plist>
