@@ -30,7 +30,9 @@ class MoonCubit extends Cubit<MoonState> {
 
     final moonPos = SunCalc.getMoonPosition(now, lat, lng);
     final moonIllum = SunCalc.getMoonIllumination(now);
-    final moonTimes = SunCalc.getMoonTimes(now, lat, lng);
+    // inUtc: false → search window is the local civil day (00:00–24:00 local)
+    // and the returned DateTimes are already in local time.
+    final moonTimes = SunCalc.getMoonTimes(now, lat, lng, false);
 
     // Convert azimuth from suncalc convention (0=south, west positive)
     // to compass bearing (0=north, clockwise).
@@ -42,8 +44,22 @@ class MoonCubit extends Cubit<MoonState> {
     final phase = (moonIllum['phase'] as num).toDouble();
     final parallacticAngle = (moonPos['parallacticAngle'] as num).toDouble();
 
-    final DateTime? moonRise = moonTimes['rise'] as DateTime?;
-    final DateTime? moonSet = moonTimes['set'] as DateTime?;
+    // Results are already local DateTimes (inUtc: false).
+    DateTime? moonRise = moonTimes['rise'] as DateTime?;
+    DateTime? moonSet = moonTimes['set'] as DateTime?;
+
+    // If rise or set already passed today, fetch tomorrow's times.
+    if ((moonRise != null && moonRise.isBefore(now)) ||
+        (moonSet != null && moonSet.isBefore(now))) {
+      final tomorrow = now.add(const Duration(days: 1));
+      final tomorrowTimes = SunCalc.getMoonTimes(tomorrow, lat, lng, false);
+      if (moonRise != null && moonRise.isBefore(now)) {
+        moonRise = tomorrowTimes['rise'] as DateTime?;
+      }
+      if (moonSet != null && moonSet.isBefore(now)) {
+        moonSet = tomorrowTimes['set'] as DateTime?;
+      }
+    }
 
     emit(MoonDataAvailable(MoonData(
       azimuth: azimuthDeg,
@@ -52,10 +68,10 @@ class MoonCubit extends Cubit<MoonState> {
       phase: phase,
       parallacticAngle: parallacticAngle,
       phaseName: _phaseName(phase),
-      moonRise: moonRise?.toLocal(),
-      moonSet: moonSet?.toLocal(),
-      nextNewMoon: _findNextLunarEvent(now, findNewMoon: true),
-      nextFullMoon: _findNextLunarEvent(now, findNewMoon: false),
+      moonRise: moonRise, // already local
+      moonSet: moonSet,   // already local
+      nextNewMoon: _nextNewMoon(now, phase),
+      nextFullMoon: _nextFullMoon(now, phase),
     )));
   }
 
@@ -70,35 +86,19 @@ class MoonCubit extends Cubit<MoonState> {
     return 'Waning Crescent';
   }
 
-  /// Iterates day-by-day to find the next new moon (fraction minimum)
-  /// or full moon (fraction maximum).
-  DateTime _findNextLunarEvent(DateTime from, {required bool findNewMoon}) {
-    double? bestFraction;
-    DateTime? bestDate;
+  // Mean synodic period of the Moon in days.
+  static const double _synodicPeriod = 29.53059;
 
-    for (int i = 1; i <= 35; i++) {
-      final date = from.add(Duration(days: i));
-      final frac =
-          (SunCalc.getMoonIllumination(date)['fraction'] as num).toDouble();
+  /// Next new moon: phase must travel from [phase] to 1.0.
+  DateTime _nextNewMoon(DateTime now, double phase) {
+    final days = (1.0 - phase) * _synodicPeriod;
+    return now.add(Duration(microseconds: (days * Duration.microsecondsPerDay).round()));
+  }
 
-      if (findNewMoon) {
-        if (bestFraction == null || frac < bestFraction) {
-          bestFraction = frac;
-          bestDate = date;
-        } else if (bestFraction < 0.1 && frac > bestFraction + 0.05) {
-          break;
-        }
-      } else {
-        if (bestFraction == null || frac > bestFraction) {
-          bestFraction = frac;
-          bestDate = date;
-        } else if (bestFraction > 0.9 && frac < bestFraction - 0.05) {
-          break;
-        }
-      }
-    }
-
-    return bestDate ?? from.add(const Duration(days: 15));
+  /// Next full moon: phase must travel from [phase] to 0.5 (mod 1).
+  DateTime _nextFullMoon(DateTime now, double phase) {
+    final days = ((0.5 - phase) % 1.0) * _synodicPeriod;
+    return now.add(Duration(microseconds: (days * Duration.microsecondsPerDay).round()));
   }
 
   @override
