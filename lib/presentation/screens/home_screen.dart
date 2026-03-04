@@ -30,9 +30,7 @@ class HomeScreen extends StatelessWidget {
                     if (moonState is MoonDataAvailable) {
                       return _MoonView(data: moonState.data);
                     }
-                    return const Center(
-                      child: CircularProgressIndicator(strokeWidth: 1),
-                    );
+                    return const _SplashScreen();
                   },
                 );
               },
@@ -48,6 +46,21 @@ class HomeScreen extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Image.asset(
+        'assets/images/mondsicht_app_icon.png',
+        width: 180,
+        height: 180,
       ),
     );
   }
