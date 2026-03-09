@@ -43,9 +43,7 @@ class HomeScreen extends StatelessWidget {
           // Pinned footer — always visible at the very bottom.
           BlocBuilder<LocationCubit, LocationState>(
             builder: (context, locationState) {
-              final location = locationState is LocationAvailable
-                  ? locationState.location
-                  : null;
+              final location = locationState is LocationAvailable ? locationState.location : null;
               return StatusFooter(location: location);
             },
           ),
@@ -62,23 +60,19 @@ class _SplashScreen extends StatefulWidget {
   State<_SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<_SplashScreen>
-    with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<_SplashScreen> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   ui.Image? _moonImage;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 8),
-      vsync: this,
-    )..repeat();
+    _controller = AnimationController(duration: const Duration(seconds: 8), vsync: this)..repeat();
     _loadImage();
   }
 
   Future<void> _loadImage() async {
-    final data = await rootBundle.load('assets/images/full_moon.jpg');
+    final data = await rootBundle.load('assets/images/full_moon.png');
     final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
     final frame = await codec.getNextFrame();
     if (mounted) setState(() => _moonImage = frame.image);
@@ -103,10 +97,7 @@ class _SplashScreenState extends State<_SplashScreen>
               : AnimatedBuilder(
                   animation: _controller,
                   builder: (context, _) => CustomPaint(
-                    painter: MoonPainter(
-                      image: image,
-                      phase: _controller.value,
-                    ),
+                    painter: MoonPainter(image: image, phase: _controller.value),
                   ),
                 ),
         ),
@@ -150,11 +141,7 @@ class _PortraitLayout extends StatelessWidget {
     return SingleChildScrollView(
       child: Column(
         children: [
-          SizedBox(
-            width: screenWidth,
-            height: screenWidth,
-            child: display,
-          ),
+          SizedBox(width: screenWidth, height: screenWidth, child: display),
           info,
         ],
       ),
@@ -174,11 +161,7 @@ class _LandscapeLayout extends StatelessWidget {
 
     return Row(
       children: [
-        SizedBox(
-          width: screenHeight,
-          height: screenHeight,
-          child: display,
-        ),
+        SizedBox(width: screenHeight, height: screenHeight, child: display),
         Expanded(child: info),
       ],
     );

@@ -49,5 +49,5 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/full_moon.jpg
+    - assets/images/full_moon.png
     - assets/images/mondsicht_app_icon.png

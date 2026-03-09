@@ -24,10 +24,8 @@ class _MoonDisplayState extends State<MoonDisplay> {
   }
 
   Future<void> _loadImage() async {
-    final data = await rootBundle.load('assets/images/full_moon.jpg');
-    final codec = await ui.instantiateImageCodec(
-      data.buffer.asUint8List(),
-    );
+    final data = await rootBundle.load('assets/images/full_moon.png');
+    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
     final frame = await codec.getNextFrame();
     if (mounted) {
       setState(() => _moonImage = frame.image);
@@ -41,18 +39,13 @@ class _MoonDisplayState extends State<MoonDisplay> {
     return AspectRatio(
       aspectRatio: 1,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         child: image == null
-            ? const Center(
-                child: CircularProgressIndicator(strokeWidth: 1),
-              )
+            ? const Center(child: CircularProgressIndicator(strokeWidth: 1))
             : Transform.rotate(
                 angle: widget.moonData.parallacticAngle,
                 child: CustomPaint(
-                  painter: MoonPainter(
-                    image: image,
-                    phase: widget.moonData.phase,
-                  ),
+                  painter: MoonPainter(image: image, phase: widget.moonData.phase),
                 ),
               ),
       ),
