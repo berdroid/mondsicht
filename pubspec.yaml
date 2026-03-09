@@ -5,7 +5,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.10.3
+  sdk: ^3.11.1
 
 dependencies:
   flutter:
@@ -13,7 +13,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_bloc: ^9.1.1
   geolocator: ^14.0.0
-  apsl_sun_calc: ^0.0.4
+  astronomia: ^0.3.1
   intl: ^0.20.2
   url_launcher: ^6.3.0
 
