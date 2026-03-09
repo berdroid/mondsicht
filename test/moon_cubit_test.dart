@@ -62,7 +62,6 @@ void main() {
         expect(data.illumination, inInclusiveRange(0.0, 1.0));
         expect(data.phase, inInclusiveRange(0.0, 1.0));
         expect(data.azimuth, inInclusiveRange(0.0, 360.0));
-        expect(data.phaseName, isNotEmpty);
         // Next events should be in the future (or at most 1 day ago due to day rounding).
         final yesterday = DateTime.now().subtract(const Duration(days: 1));
         expect(data.nextNewMoon.isAfter(yesterday), isTrue);
@@ -77,18 +76,5 @@ void main() {
       expect: () => <MoonState>[],
     );
 
-    test('phase name covers all 8 standard values', () {
-      final cubit = MoonCubit(locationCubit);
-      final names = <String>{};
-      final probePhases = [0.01, 0.1, 0.25, 0.38, 0.5, 0.65, 0.75, 0.88];
-      for (final p in probePhases) {
-        // Access via reflection is not ideal; use a known location and check
-        // phaseName is non-empty instead.
-        expect(p, inInclusiveRange(0.0, 1.0));
-      }
-      names.add('placeholder'); // keep the set non-empty
-      expect(names, isNotEmpty);
-      cubit.close();
-    });
   });
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:apsl_sun_calc/apsl_sun_calc.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mondsicht/application/location/location_cubit.dart';
 import 'package:mondsicht/application/location/location_state.dart';
@@ -49,8 +50,7 @@ class MoonCubit extends Cubit<MoonState> {
     DateTime? moonSet = moonTimes['set'] as DateTime?;
 
     // If rise or set already passed today, fetch tomorrow's times.
-    if ((moonRise != null && moonRise.isBefore(now)) ||
-        (moonSet != null && moonSet.isBefore(now))) {
+    if ((moonRise != null && moonRise.isBefore(now)) || (moonSet != null && moonSet.isBefore(now))) {
       final tomorrow = now.add(const Duration(days: 1));
       final tomorrowTimes = SunCalc.getMoonTimes(tomorrow, lat, lng, false);
       if (moonRise != null && moonRise.isBefore(now)) {
@@ -61,29 +61,21 @@ class MoonCubit extends Cubit<MoonState> {
       }
     }
 
-    emit(MoonDataAvailable(MoonData(
-      azimuth: azimuthDeg,
-      elevation: elevation,
-      illumination: illumination,
-      phase: phase,
-      parallacticAngle: parallacticAngle,
-      phaseName: _phaseName(phase),
-      moonRise: moonRise, // already local
-      moonSet: moonSet,   // already local
-      nextNewMoon: _nextNewMoon(now, phase),
-      nextFullMoon: _nextFullMoon(now, phase),
-    )));
-  }
-
-  String _phaseName(double phase) {
-    if (phase < 0.0625 || phase >= 0.9375) return 'New Moon';
-    if (phase < 0.1875) return 'Waxing Crescent';
-    if (phase < 0.3125) return 'First Quarter';
-    if (phase < 0.4375) return 'Waxing Gibbous';
-    if (phase < 0.5625) return 'Full Moon';
-    if (phase < 0.6875) return 'Waning Gibbous';
-    if (phase < 0.8125) return 'Last Quarter';
-    return 'Waning Crescent';
+    emit(
+      MoonDataAvailable(
+        MoonData(
+          azimuth: azimuthDeg,
+          elevation: elevation,
+          illumination: illumination,
+          phase: phase,
+          parallacticAngle: parallacticAngle,
+          moonRise: moonRise, // already local
+          moonSet: moonSet, // already local
+          nextNewMoon: _nextNewMoon(now, phase),
+          nextFullMoon: _nextFullMoon(now, phase),
+        ),
+      ),
+    );
   }
 
   // Mean synodic period of the Moon in days.

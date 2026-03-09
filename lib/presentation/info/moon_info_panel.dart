@@ -33,7 +33,7 @@ class MoonInfoPanel extends StatelessWidget {
           // Phase name
           Center(
             child: Text(
-              '${_phaseEmoji(data.phase)}  ${data.phaseName}',
+              '${_phaseEmoji(data.phase)}  ${_phaseName(data.phase)}',
               style: theme.textTheme.headlineMedium,
               textAlign: TextAlign.center,
             ),
@@ -84,6 +84,17 @@ class MoonInfoPanel extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _phaseName(double phase) {
+    if (phase < 0.0625 || phase >= 0.9375) return 'New Moon';
+    if (phase < 0.1875) return 'Waxing Crescent';
+    if (phase < 0.3125) return 'First Quarter';
+    if (phase < 0.4375) return 'Waxing Gibbous';
+    if (phase < 0.5625) return 'Full Moon';
+    if (phase < 0.6875) return 'Waning Gibbous';
+    if (phase < 0.8125) return 'Last Quarter';
+    return 'Waning Crescent';
   }
 
   String _phaseEmoji(double phase) {

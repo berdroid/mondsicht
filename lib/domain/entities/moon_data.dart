@@ -14,9 +14,6 @@ class MoonData {
   /// Parallactic angle in radians — used to rotate the moon image.
   final double parallacticAngle;
 
-  /// Human-readable phase name, e.g. "Waxing Crescent".
-  final String phaseName;
-
   final DateTime? moonRise;
   final DateTime? moonSet;
   final DateTime nextNewMoon;
@@ -28,7 +25,6 @@ class MoonData {
     required this.illumination,
     required this.phase,
     required this.parallacticAngle,
-    required this.phaseName,
     required this.moonRise,
     required this.moonSet,
     required this.nextNewMoon,
