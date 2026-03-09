@@ -1,4 +1,7 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mondsicht/application/location/location_cubit.dart';
 import 'package:mondsicht/application/location/location_state.dart';
@@ -6,6 +9,7 @@ import 'package:mondsicht/application/moon/moon_cubit.dart';
 import 'package:mondsicht/application/moon/moon_state.dart';
 import 'package:mondsicht/domain/entities/moon_data.dart';
 import 'package:mondsicht/presentation/display/moon_display.dart';
+import 'package:mondsicht/presentation/display/moon_painter.dart';
 import 'package:mondsicht/presentation/info/moon_info_panel.dart';
 import 'package:mondsicht/presentation/widgets/permission_message.dart';
 import 'package:mondsicht/presentation/widgets/status_footer.dart';
@@ -51,16 +55,61 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _SplashScreen extends StatelessWidget {
+class _SplashScreen extends StatefulWidget {
   const _SplashScreen();
 
   @override
+  State<_SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<_SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  ui.Image? _moonImage;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 8),
+      vsync: this,
+    )..repeat();
+    _loadImage();
+  }
+
+  Future<void> _loadImage() async {
+    final data = await rootBundle.load('assets/images/full_moon.jpg');
+    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+    final frame = await codec.getNextFrame();
+    if (mounted) setState(() => _moonImage = frame.image);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final image = _moonImage;
     return Center(
-      child: Image.asset(
-        'assets/images/mondsicht_app_icon.png',
-        width: 180,
-        height: 180,
+      child: FractionallySizedBox(
+        widthFactor: 0.65,
+        child: AspectRatio(
+          aspectRatio: 1,
+          child: image == null
+              ? const SizedBox.shrink()
+              : AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) => CustomPaint(
+                    painter: MoonPainter(
+                      image: image,
+                      phase: _controller.value,
+                    ),
+                  ),
+                ),
+        ),
       ),
     );
   }
