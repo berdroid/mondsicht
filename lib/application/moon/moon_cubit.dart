@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:apsl_sun_calc/apsl_sun_calc.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mondsicht/application/location/location_cubit.dart';
 import 'package:mondsicht/application/location/location_state.dart';
