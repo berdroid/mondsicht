@@ -19,35 +19,44 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final safeArea = MediaQuery.paddingOf(context);
     return Scaffold(
-      body: Column(
-        children: [
-          Expanded(
-            child: BlocBuilder<LocationCubit, LocationState>(
-              builder: (context, locationState) {
-                if (locationState is LocationPermissionDenied) {
-                  return const PermissionMessage();
-                }
+      body: Padding(
+        padding: EdgeInsets.only(
+          top: safeArea.top,
+          left: safeArea.left,
+          right: safeArea.right,
+          bottom: safeArea.bottom,
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: BlocBuilder<LocationCubit, LocationState>(
+                builder: (context, locationState) {
+                  if (locationState is LocationPermissionDenied) {
+                    return const PermissionMessage();
+                  }
 
-                return BlocBuilder<MoonCubit, MoonState>(
-                  builder: (context, moonState) {
-                    if (moonState is MoonDataAvailable) {
-                      return _MoonView(data: moonState.data);
-                    }
-                    return const _SplashScreen();
-                  },
-                );
+                  return BlocBuilder<MoonCubit, MoonState>(
+                    builder: (context, moonState) {
+                      if (moonState is MoonDataAvailable) {
+                        return _MoonView(data: moonState.data);
+                      }
+                      return const _SplashScreen();
+                    },
+                  );
+                },
+              ),
+            ),
+            // Pinned footer — always visible at the very bottom.
+            BlocBuilder<LocationCubit, LocationState>(
+              builder: (context, locationState) {
+                final location = locationState is LocationAvailable ? locationState.location : null;
+                return StatusFooter(location: location);
               },
             ),
-          ),
-          // Pinned footer — always visible at the very bottom.
-          BlocBuilder<LocationCubit, LocationState>(
-            builder: (context, locationState) {
-              final location = locationState is LocationAvailable ? locationState.location : null;
-              return StatusFooter(location: location);
-            },
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

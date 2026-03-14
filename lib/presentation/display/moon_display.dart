@@ -39,7 +39,7 @@ class _MoonDisplayState extends State<MoonDisplay> {
     return AspectRatio(
       aspectRatio: 1,
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.only(left: 24, right: 24),
         child: image == null
             ? const Center(child: CircularProgressIndicator(strokeWidth: 1))
             : Transform.rotate(
