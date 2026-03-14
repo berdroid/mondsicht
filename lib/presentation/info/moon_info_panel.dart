@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mondsicht/domain/entities/moon_data.dart';
+import 'package:mondsicht/presentation/display/moon_phase_icon.dart';
 
 class MoonInfoPanel extends StatelessWidget {
   final MoonData data;
@@ -32,10 +33,16 @@ class MoonInfoPanel extends StatelessWidget {
         children: [
           // Phase name
           Center(
-            child: Text(
-              '${_phaseEmoji(data.phase)}  ${_phaseName(data.phase)}',
-              style: theme.textTheme.headlineMedium,
-              textAlign: TextAlign.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                MoonPhaseIcon(phase: data.phase, size: 28),
+                const SizedBox(width: 12),
+                Text(
+                  _phaseName(data.phase),
+                  style: theme.textTheme.headlineMedium,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 24),
@@ -97,16 +104,6 @@ class MoonInfoPanel extends StatelessWidget {
     return 'Waning Crescent';
   }
 
-  String _phaseEmoji(double phase) {
-    if (phase < 0.0625 || phase >= 0.9375) return '🌑';
-    if (phase < 0.1875) return '🌒';
-    if (phase < 0.3125) return '🌓';
-    if (phase < 0.4375) return '🌔';
-    if (phase < 0.5625) return '🌕';
-    if (phase < 0.6875) return '🌖';
-    if (phase < 0.8125) return '🌗';
-    return '🌘';
-  }
 }
 
 class _InfoRow extends StatelessWidget {
