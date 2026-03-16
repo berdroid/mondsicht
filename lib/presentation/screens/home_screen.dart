@@ -7,15 +7,42 @@ import 'package:mondsicht/application/location/location_cubit.dart';
 import 'package:mondsicht/application/location/location_state.dart';
 import 'package:mondsicht/application/moon/moon_cubit.dart';
 import 'package:mondsicht/application/moon/moon_state.dart';
+import 'package:mondsicht/application/sun/sun_cubit.dart';
+import 'package:mondsicht/application/sun/sun_state.dart';
 import 'package:mondsicht/domain/entities/moon_data.dart';
+import 'package:mondsicht/domain/entities/sun_data.dart';
 import 'package:mondsicht/presentation/display/moon_display.dart';
 import 'package:mondsicht/presentation/display/moon_painter.dart';
+import 'package:mondsicht/presentation/display/sun_display.dart';
 import 'package:mondsicht/presentation/info/moon_info_panel.dart';
+import 'package:mondsicht/presentation/info/sun_info_panel.dart';
 import 'package:mondsicht/presentation/widgets/permission_message.dart';
 import 'package:mondsicht/presentation/widgets/status_footer.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late final PageController _pageController;
+
+  static final _sunCreditUri = Uri.parse(
+      'https://soho.nascom.nasa.gov/data/realtime/realtime-update.html');
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,28 +63,63 @@ class HomeScreen extends StatelessWidget {
                   if (locationState is LocationPermissionDenied) {
                     return const PermissionMessage();
                   }
-
-                  return BlocBuilder<MoonCubit, MoonState>(
-                    builder: (context, moonState) {
-                      if (moonState is MoonDataAvailable) {
-                        return _MoonView(data: moonState.data);
-                      }
-                      return const _SplashScreen();
-                    },
+                  return PageView(
+                    controller: _pageController,
+                    children: const [
+                      _MoonPage(),
+                      _SunPage(),
+                    ],
                   );
                 },
               ),
             ),
             // Pinned footer — always visible at the very bottom.
-            BlocBuilder<LocationCubit, LocationState>(
-              builder: (context, locationState) {
-                final location = locationState is LocationAvailable ? locationState.location : null;
-                return StatusFooter(location: location);
+            AnimatedBuilder(
+              animation: _pageController,
+              builder: (context, _) {
+                final page = _pageController.hasClients
+                    ? (_pageController.page?.round() ?? 0)
+                    : 0;
+                return BlocBuilder<LocationCubit, LocationState>(
+                  builder: (context, locationState) {
+                    final location = locationState is LocationAvailable
+                        ? locationState.location
+                        : null;
+                    if (page == 1) {
+                      return StatusFooter(
+                        location: location,
+                        creditLabel: 'ESA/NASA/SOHO',
+                        creditUri: _sunCreditUri,
+                      );
+                    }
+                    return StatusFooter(location: location);
+                  },
+                );
               },
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Moon page
+// ---------------------------------------------------------------------------
+
+class _MoonPage extends StatelessWidget {
+  const _MoonPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<MoonCubit, MoonState>(
+      builder: (context, moonState) {
+        if (moonState is MoonDataAvailable) {
+          return _MoonView(data: moonState.data);
+        }
+        return const _SplashScreen();
+      },
     );
   }
 }
@@ -69,14 +131,17 @@ class _SplashScreen extends StatefulWidget {
   State<_SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<_SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<_SplashScreen>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   ui.Image? _moonImage;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(seconds: 8), vsync: this)..repeat();
+    _controller =
+        AnimationController(duration: const Duration(seconds: 8), vsync: this)
+          ..repeat();
     _loadImage();
   }
 
@@ -106,7 +171,8 @@ class _SplashScreenState extends State<_SplashScreen> with SingleTickerProviderS
               : AnimatedBuilder(
                   animation: _controller,
                   builder: (context, _) => CustomPaint(
-                    painter: MoonPainter(image: image, phase: _controller.value),
+                    painter:
+                        MoonPainter(image: image, phase: _controller.value),
                   ),
                 ),
         ),
@@ -136,6 +202,70 @@ class _MoonView extends StatelessWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Sun page
+// ---------------------------------------------------------------------------
+
+class _SunPage extends StatefulWidget {
+  const _SunPage();
+
+  @override
+  State<_SunPage> createState() => _SunPageState();
+}
+
+class _SunPageState extends State<_SunPage> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // required by AutomaticKeepAliveClientMixin
+    return BlocBuilder<SunCubit, SunState>(
+      builder: (context, sunState) {
+        if (sunState is SunDataAvailable) {
+          return _SunView(data: sunState.data);
+        }
+        return const _SunLoadingView();
+      },
+    );
+  }
+}
+
+class _SunLoadingView extends StatelessWidget {
+  const _SunLoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: CircularProgressIndicator());
+  }
+}
+
+class _SunView extends StatelessWidget {
+  final SunData data;
+
+  const _SunView({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return OrientationBuilder(
+      builder: (context, orientation) {
+        const display = SunDisplay();
+        final info = SunInfoPanel(data: data);
+
+        if (orientation == Orientation.portrait) {
+          return _PortraitLayout(display: display, info: info);
+        } else {
+          return _LandscapeLayout(display: display, info: info);
+        }
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared layouts
+// ---------------------------------------------------------------------------
 
 class _PortraitLayout extends StatelessWidget {
   final Widget display;

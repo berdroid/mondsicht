@@ -6,16 +6,25 @@ import 'package:url_launcher/url_launcher.dart';
 /// and a photo credit link.
 class StatusFooter extends StatelessWidget {
   final LocationData? location;
+  final String creditLabel;
 
-  static const String _creditLabel = 'Moon photo: Luc Viatour';
-  static final Uri _creditUri = Uri.parse('https://lucnix.be/');
+  /// Credit URI. Defaults to `https://lucnix.be/` (moon photo credit) when null.
+  final Uri? creditUri;
 
-  const StatusFooter({super.key, required this.location});
+  static final _defaultCreditUri = Uri.parse('https://lucnix.be/');
+
+  const StatusFooter({
+    super.key,
+    required this.location,
+    this.creditLabel = 'Moon photo: Luc Viatour',
+    this.creditUri,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final loc = location;
+    final uri = creditUri ?? _defaultCreditUri;
 
     return Container(
       color: const Color(0xFF1A1A2E),
@@ -40,10 +49,10 @@ class StatusFooter extends StatelessWidget {
             const SizedBox(width: 8),
             // Clickable image credit
             GestureDetector(
-              onTap: () => launchUrl(_creditUri,
-                  mode: LaunchMode.externalApplication),
+              onTap: () =>
+                  launchUrl(uri, mode: LaunchMode.externalApplication),
               child: Text(
-                _creditLabel,
+                creditLabel,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: const Color(0xFFD4AF6A),
                   decoration: TextDecoration.underline,

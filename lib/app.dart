@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mondsicht/application/location/location_cubit.dart';
 import 'package:mondsicht/application/moon/moon_cubit.dart';
+import 'package:mondsicht/application/sun/sun_cubit.dart';
 import 'package:mondsicht/data/location_repository.dart';
 import 'package:mondsicht/presentation/screens/home_screen.dart';
 import 'package:mondsicht/presentation/theme/app_theme.dart';
@@ -19,6 +20,9 @@ class MondSichtApp extends StatelessWidget {
         BlocProvider(
           create: (context) =>
               MoonCubit(context.read<LocationCubit>()),
+        ),
+        BlocProvider(
+          create: (context) => SunCubit(context.read<LocationCubit>()),
         ),
       ],
       child: MaterialApp(
