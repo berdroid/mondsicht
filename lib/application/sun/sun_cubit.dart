@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:astronomia/astronomia.dart';
 import 'package:astronomia/rise.dart' as rise;
 import 'package:astronomia/solar.dart' as solar;
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mondsicht/application/location/location_cubit.dart';
 import 'package:mondsicht/application/location/location_state.dart';
@@ -40,16 +39,14 @@ class SunCubit extends Cubit<SunState> {
     final psiWest = toRad(-lng); // flip sign: east → west-positive
 
     // --- Greenwich apparent sidereal time at midnight ---
-    final jdMidnight = calendarGregorianToJD(
-        nowUtc.year, nowUtc.month, nowUtc.day.toDouble());
+    final jdMidnight = calendarGregorianToJD(nowUtc.year, nowUtc.month, nowUtc.day.toDouble());
     final th0Secs = apparent0UT(jdMidnight);
     final utSecs = (jde - jdMidnight) * 86400.0;
 
     // --- Current sun position ---
     final eqNow = solar.apparentEquatorial(jde);
     // Sidereal rate = 360.985647°/360° per solar second.
-    final gstRad =
-        (th0Secs + utSecs * 360.985647 / 360.0) * 2 * pi / 86400.0;
+    final gstRad = (th0Secs + utSecs * 360.985647 / 360.0) * 2 * pi / 86400.0;
     final hzNow = eqToHz(eqNow.ra, eqNow.dec, phi, psiWest, gstRad);
     // az: westward from south → compass bearing (0 = N, clockwise).
     final azimuthDeg = (toDeg(hzNow.az) + 180.0) % 360.0;
@@ -60,6 +57,11 @@ class SunCubit extends Cubit<SunState> {
     final eq0 = solar.apparentEquatorial(jdMidnight);
     final eqP1 = solar.apparentEquatorial(jdMidnight + 1);
 
+    // Normalize RA to remove 0/2π wrap-around (occurs at vernal equinox ~Mar 20).
+    double ra0 = eqM1.ra, ra1 = eq0.ra, ra2 = eqP1.ra;
+    if (ra1 < ra0) ra1 += 2 * pi;
+    if (ra2 < ra1) ra2 += 2 * pi;
+
     // --- Sun rise / transit / set (Meeus Ch. 15) ---
     final riseSet = rise.times(
       phi,
@@ -67,7 +69,7 @@ class SunCubit extends Cubit<SunState> {
       _deltaT,
       rise.stdh0Solar,
       th0Secs,
-      [eqM1.ra, eq0.ra, eqP1.ra],
+      [ra0, ra1, ra2],
       [eqM1.dec, eq0.dec, eqP1.dec],
     );
 
@@ -88,10 +90,8 @@ class SunCubit extends Cubit<SunState> {
       // --- Culmination position ---
       final jdTransit = jdMidnight + riseSet.transit / 86400.0;
       final eqTransit = solar.apparentEquatorial(jdTransit);
-      final gstTransitRad =
-          (th0Secs + riseSet.transit * 360.985647 / 360.0) * 2 * pi / 86400.0;
-      final hzTransit =
-          eqToHz(eqTransit.ra, eqTransit.dec, phi, psiWest, gstTransitRad);
+      final gstTransitRad = (th0Secs + riseSet.transit * 360.985647 / 360.0) * 2 * pi / 86400.0;
+      final hzTransit = eqToHz(eqTransit.ra, eqTransit.dec, phi, psiWest, gstTransitRad);
       culminationAzimuth = (toDeg(hzTransit.az) + 180.0) % 360.0;
       culminationElevation = toDeg(hzTransit.alt);
 
@@ -105,13 +105,16 @@ class SunCubit extends Cubit<SunState> {
         final eqTM1 = solar.apparentEquatorial(jdTomorrow - 1);
         final eqT0 = solar.apparentEquatorial(jdTomorrow);
         final eqTP1 = solar.apparentEquatorial(jdTomorrow + 1);
+        double tra0 = eqTM1.ra, tra1 = eqT0.ra, tra2 = eqTP1.ra;
+        if (tra1 < tra0) tra1 += 2 * pi;
+        if (tra2 < tra1) tra2 += 2 * pi;
         final tomorrow = rise.times(
           phi,
           psiWest,
           _deltaT,
           rise.stdh0Solar,
           th0Tomorrow,
-          [eqTM1.ra, eqT0.ra, eqTP1.ra],
+          [tra0, tra1, tra2],
           [eqTM1.dec, eqT0.dec, eqTP1.dec],
         );
         if (tomorrow != null) {
@@ -125,8 +128,7 @@ class SunCubit extends Cubit<SunState> {
             culminationTime = _utcSecsToLocal(jdTomorrow, tomorrow.transit);
             final jdTransitTomorrow = jdTomorrow + tomorrow.transit / 86400.0;
             final eqTT = solar.apparentEquatorial(jdTransitTomorrow);
-            final gstTT = (th0Tomorrow + tomorrow.transit * 360.985647 / 360.0) *
-                2 * pi / 86400.0;
+            final gstTT = (th0Tomorrow + tomorrow.transit * 360.985647 / 360.0) * 2 * pi / 86400.0;
             final hzTT = eqToHz(eqTT.ra, eqTT.dec, phi, psiWest, gstTT);
             culminationAzimuth = (toDeg(hzTT.az) + 180.0) % 360.0;
             culminationElevation = toDeg(hzTT.alt);
@@ -135,20 +137,20 @@ class SunCubit extends Cubit<SunState> {
       }
     }
 
-    debugPrint(
-        'Sun az. ${azimuthDeg.toStringAsFixed(1)}° '
-        'alt. ${elevationDeg.toStringAsFixed(1)}°');
-
-    emit(SunDataAvailable(SunData(
-      azimuth: azimuthDeg,
-      elevation: elevationDeg,
-      culminationTime: culminationTime,
-      culminationAzimuth: culminationAzimuth,
-      culminationElevation: culminationElevation,
-      dayLength: dayLength,
-      sunrise: sunrise,
-      sunset: sunset,
-    )));
+    emit(
+      SunDataAvailable(
+        SunData(
+          azimuth: azimuthDeg,
+          elevation: elevationDeg,
+          culminationTime: culminationTime,
+          culminationAzimuth: culminationAzimuth,
+          culminationElevation: culminationElevation,
+          dayLength: dayLength,
+          sunrise: sunrise,
+          sunset: sunset,
+        ),
+      ),
+    );
   }
 
   // --- Helpers (mirrored from MoonCubit) ---
@@ -163,14 +165,10 @@ class SunCubit extends Cubit<SunState> {
     final cal = jdToCalendar(jd);
     final dayInt = cal.day.floor();
     final secs = ((cal.day - dayInt) * 86400).round();
-    return DateTime.utc(
-      cal.year, cal.month, dayInt,
-      secs ~/ 3600, (secs % 3600) ~/ 60, secs % 60,
-    ).toLocal();
+    return DateTime.utc(cal.year, cal.month, dayInt, secs ~/ 3600, (secs % 3600) ~/ 60, secs % 60).toLocal();
   }
 
-  DateTime _utcSecsToLocal(double jdMidnight, double secs) =>
-      _fromJD(jdMidnight + secs / 86400.0);
+  DateTime _utcSecsToLocal(double jdMidnight, double secs) => _fromJD(jdMidnight + secs / 86400.0);
 
   @override
   Future<void> close() {

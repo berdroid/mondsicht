@@ -14,6 +14,15 @@ class MoonData {
   /// Parallactic angle in radians — used to rotate the moon image.
   final double parallacticAngle;
 
+  /// Local time of lunar transit (lunar noon).
+  final DateTime culminationTime;
+
+  /// Compass bearing at lunar transit.
+  final double culminationAzimuth;
+
+  /// Altitude at lunar transit in degrees.
+  final double culminationElevation;
+
   final DateTime? moonRise;
   final DateTime? moonSet;
   final DateTime nextNewMoon;
@@ -25,6 +34,9 @@ class MoonData {
     required this.illumination,
     required this.phase,
     required this.parallacticAngle,
+    required this.culminationTime,
+    required this.culminationAzimuth,
+    required this.culminationElevation,
     required this.moonRise,
     required this.moonSet,
     required this.nextNewMoon,

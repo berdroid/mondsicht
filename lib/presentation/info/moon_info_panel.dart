@@ -65,6 +65,21 @@ class MoonInfoPanel extends StatelessWidget {
             value: '${data.elevation.toStringAsFixed(1)}°',
           ),
           const Divider(),
+          _InfoRow(
+            label: 'Culmination',
+            value: _formatTime(data.culminationTime, timeFormat, today),
+          ),
+          const Divider(),
+          _InfoRow(
+            label: 'Culmination Azimuth',
+            value: '${data.culminationAzimuth.toStringAsFixed(1)}°',
+          ),
+          const Divider(),
+          _InfoRow(
+            label: 'Culmination Elevation',
+            value: '${data.culminationElevation.toStringAsFixed(1)}°',
+          ),
+          const Divider(),
 
           // Rise / Set
           _InfoRow(
@@ -116,7 +131,7 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

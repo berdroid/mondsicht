@@ -6,7 +6,6 @@ import 'package:astronomia/moonillum.dart' as moonillum;
 import 'package:astronomia/moonphase.dart' as moonphase;
 import 'package:astronomia/moonposition.dart' as moonpos;
 import 'package:astronomia/rise.dart' as rise;
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mondsicht/application/location/location_cubit.dart';
 import 'package:mondsicht/application/location/location_state.dart';
@@ -83,31 +82,79 @@ class MoonCubit extends Cubit<MoonState> {
     // Derived from the true elongation (Moon lon − Sun lon).
     final phase = mod2pi(pos.lon - _sunEclipticLon(jde)) / (2 * pi);
 
-    // --- Moon rise / set (Meeus Ch. 15, 3-day interpolation) ---
-    ({double ra, double dec, double parallax}) moonCoordsFn(double jd2) {
+    // --- 3-day RA/Dec for rise/set interpolation (day−1, day0, day+1) ---
+    ({double ra, double dec}) moonEqAt(double jd2) {
       final p = moonpos.position(jd2);
-      final eq2 = eclToEq(p.lon, p.lat, sEps, cEps);
-      return (ra: eq2.ra, dec: eq2.dec, parallax: moonpos.parallax(p.delta));
+      final e = eclToEq(p.lon, p.lat, sEps, cEps);
+      return (ra: e.ra, dec: e.dec);
     }
+    final eqM1 = moonEqAt(jdMidnight - 1);
+    final eq0  = moonEqAt(jdMidnight);
+    final eqP1 = moonEqAt(jdMidnight + 1);
 
+    // Normalize RA to remove 0/2π wrap-around: moon always moves east so RA
+    // must be monotonically increasing across the three-day window.
+    double ra0 = eqM1.ra, ra1 = eq0.ra, ra2 = eqP1.ra;
+    if (ra1 < ra0) ra1 += 2 * pi;
+    if (ra2 < ra1) ra2 += 2 * pi;
+
+    // Standard altitude for the moon: h0 = 0.7275·π − 34' (Meeus Ch. 15).
+    final h0Moon = 0.7275 * moonpos.parallax(pos.delta) - toRad(34.0 / 60.0);
+
+    // --- Moon rise / transit / set (Meeus Ch. 15, same algorithm as sun) ---
     DateTime? moonRise, moonSet;
-    final today =
-        rise.moonTimes(jdMidnight, phi, psiWest, _deltaT, th0Secs, moonCoordsFn);
-    if (today != null) {
-      moonRise = _utcSecsToLocal(jdMidnight, today.rise);
-      moonSet = _utcSecsToLocal(jdMidnight, today.set);
+    DateTime culminationTime = now;
+    double culminationAzimuth = 180.0;
+    double culminationElevation = 0.0;
+    final riseSet = rise.times(
+      phi, psiWest, _deltaT, h0Moon, th0Secs,
+      [ra0, ra1, ra2],
+      [eqM1.dec, eq0.dec, eqP1.dec],
+    );
+    if (riseSet != null) {
+      moonRise = _utcSecsToLocal(jdMidnight, riseSet.rise);
+      moonSet  = _utcSecsToLocal(jdMidnight, riseSet.set);
+      culminationTime = _utcSecsToLocal(jdMidnight, riseSet.transit);
+
+      // --- Culmination position ---
+      // At upper transit H=0: alt = arcsin(sin(φ)sin(δ) + cos(φ)cos(δ)).
+      final jdTransit = jdMidnight + riseSet.transit / 86400.0;
+      final pTransit = moonpos.position(jdTransit);
+      final eqTransit = eclToEq(pTransit.lon, pTransit.lat, sEps, cEps);
+      culminationElevation = toDeg(asin(
+          sin(phi) * sin(eqTransit.dec) + cos(phi) * cos(eqTransit.dec)));
+      culminationAzimuth = eqTransit.dec < phi ? 180.0 : 0.0;
+
       // Replace any already-past event with tomorrow's equivalent.
-      if (moonRise.isBefore(now) || moonSet.isBefore(now)) {
+      if (moonRise.isBefore(now) || moonSet.isBefore(now) || culminationTime.isBefore(now)) {
         final jdTomorrow = jdMidnight + 1;
         final th0Tomorrow = apparent0UT(jdTomorrow);
-        final tomorrow = rise.moonTimes(
-            jdTomorrow, phi, psiWest, _deltaT, th0Tomorrow, moonCoordsFn);
+        final eqTM1 = moonEqAt(jdTomorrow - 1);
+        final eqT0  = moonEqAt(jdTomorrow);
+        final eqTP1 = moonEqAt(jdTomorrow + 1);
+        double tra0 = eqTM1.ra, tra1 = eqT0.ra, tra2 = eqTP1.ra;
+        if (tra1 < tra0) tra1 += 2 * pi;
+        if (tra2 < tra1) tra2 += 2 * pi;
+        final tomorrow = rise.times(
+          phi, psiWest, _deltaT, h0Moon, th0Tomorrow,
+          [tra0, tra1, tra2],
+          [eqTM1.dec, eqT0.dec, eqTP1.dec],
+        );
         if (tomorrow != null) {
           if (moonRise.isBefore(now)) {
             moonRise = _utcSecsToLocal(jdTomorrow, tomorrow.rise);
           }
           if (moonSet.isBefore(now)) {
             moonSet = _utcSecsToLocal(jdTomorrow, tomorrow.set);
+          }
+          if (culminationTime.isBefore(now)) {
+            culminationTime = _utcSecsToLocal(jdTomorrow, tomorrow.transit);
+            final jdTransitT = jdTomorrow + tomorrow.transit / 86400.0;
+            final pTransitT = moonpos.position(jdTransitT);
+            final eqTransitT = eclToEq(pTransitT.lon, pTransitT.lat, sEps, cEps);
+            culminationElevation = toDeg(asin(
+                sin(phi) * sin(eqTransitT.dec) + cos(phi) * cos(eqTransitT.dec)));
+            culminationAzimuth = eqTransitT.dec < phi ? 180.0 : 0.0;
           }
         }
       }
@@ -124,18 +171,15 @@ class MoonCubit extends Cubit<MoonState> {
       nextFullMoon = _fromJD(moonphase.full(decYear + 29.53 / 365.25));
     }
 
-    debugPrint(
-        'Moon phase: ${phase.toStringAsFixed(3)} '
-        'illum. ${(illumination * 100).round()}% '
-        'az. ${azimuthDeg.toStringAsFixed(1)}° '
-        'alt. ${elevationDeg.toStringAsFixed(1)}°');
-
     emit(MoonDataAvailable(MoonData(
       azimuth: azimuthDeg,
       elevation: elevationDeg,
       illumination: illumination,
       phase: phase,
       parallacticAngle: parallacticAngle,
+      culminationTime: culminationTime,
+      culminationAzimuth: culminationAzimuth,
+      culminationElevation: culminationElevation,
       moonRise: moonRise,
       moonSet: moonSet,
       nextNewMoon: nextNewMoon,
