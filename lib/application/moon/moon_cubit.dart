@@ -114,16 +114,14 @@ class MoonCubit extends Cubit<MoonState> {
     if (riseSet != null) {
       moonRise = _utcSecsToLocal(jdMidnight, riseSet.rise);
       moonSet  = _utcSecsToLocal(jdMidnight, riseSet.set);
-      culminationTime = _utcSecsToLocal(jdMidnight, riseSet.transit);
 
-      // --- Culmination position ---
-      // At upper transit H=0: alt = arcsin(sin(φ)sin(δ) + cos(φ)cos(δ)).
-      final jdTransit = jdMidnight + riseSet.transit / 86400.0;
-      final pTransit = moonpos.position(jdTransit);
-      final eqTransit = eclToEq(pTransit.lon, pTransit.lat, sEps, cEps);
-      culminationElevation = toDeg(asin(
-          sin(phi) * sin(eqTransit.dec) + cos(phi) * cos(eqTransit.dec)));
-      culminationAzimuth = eqTransit.dec < phi ? 180.0 : 0.0;
+      // True culmination: maximum elevation near transit (may differ from
+      // meridian crossing by up to ~30 min due to the Moon's fast-changing dec).
+      final culm = _moonCulmination(
+          jdMidnight, riseSet.transit, th0Secs, phi, psiWest, sEps, cEps);
+      culminationTime      = culm.time;
+      culminationElevation = culm.elevation;
+      culminationAzimuth   = culm.azimuth;
 
       // Replace any already-past event with tomorrow's equivalent.
       if (moonRise.isBefore(now) || moonSet.isBefore(now) || culminationTime.isBefore(now)) {
@@ -148,13 +146,11 @@ class MoonCubit extends Cubit<MoonState> {
             moonSet = _utcSecsToLocal(jdTomorrow, tomorrow.set);
           }
           if (culminationTime.isBefore(now)) {
-            culminationTime = _utcSecsToLocal(jdTomorrow, tomorrow.transit);
-            final jdTransitT = jdTomorrow + tomorrow.transit / 86400.0;
-            final pTransitT = moonpos.position(jdTransitT);
-            final eqTransitT = eclToEq(pTransitT.lon, pTransitT.lat, sEps, cEps);
-            culminationElevation = toDeg(asin(
-                sin(phi) * sin(eqTransitT.dec) + cos(phi) * cos(eqTransitT.dec)));
-            culminationAzimuth = eqTransitT.dec < phi ? 180.0 : 0.0;
+            final culmT = _moonCulmination(
+                jdTomorrow, tomorrow.transit, th0Tomorrow, phi, psiWest, sEps, cEps);
+            culminationTime      = culmT.time;
+            culminationElevation = culmT.elevation;
+            culminationAzimuth   = culmT.azimuth;
           }
         }
       }
@@ -205,6 +201,34 @@ class MoonCubit extends Cubit<MoonState> {
       cal.year, cal.month, dayInt,
       secs ~/ 3600, (secs % 3600) ~/ 60, secs % 60,
     ).toLocal();
+  }
+
+  /// Finds the true lunar culmination (maximum elevation) by sampling every
+  /// 5 minutes in a ±2 h window around the approximate transit time.
+  /// Returns the local [DateTime], elevation in degrees, and compass azimuth.
+  ({DateTime time, double elevation, double azimuth}) _moonCulmination(
+    double jdBase, double transitSecs,
+    double th0, double phi, double psiWest,
+    double sEps, double cEps,
+  ) {
+    double bestAlt = -90.0;
+    double bestAz  = 180.0;
+    DateTime bestTime = _utcSecsToLocal(jdBase, transitSecs);
+    for (double dt = -7200; dt <= 7200; dt += 300) {
+      final secs = transitSecs + dt;
+      final jdT = jdBase + secs / 86400.0;
+      final p = moonpos.position(jdT);
+      final eq = eclToEq(p.lon, p.lat, sEps, cEps);
+      final gst = (th0 + secs * 360.985647 / 360.0) * 2 * pi / 86400.0;
+      final hz = eqToHz(eq.ra, eq.dec, phi, psiWest, gst);
+      final altDeg = toDeg(hz.alt);
+      if (altDeg > bestAlt) {
+        bestAlt  = altDeg;
+        bestAz   = (toDeg(hz.az) + 180.0) % 360.0;
+        bestTime = _utcSecsToLocal(jdBase, secs);
+      }
+    }
+    return (time: bestTime, elevation: bestAlt, azimuth: bestAz);
   }
 
   /// Converts a JD midnight + seconds-of-day (UT) to a local [DateTime].
